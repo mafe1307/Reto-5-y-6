@@ -1,0 +1,16 @@
+Transaccion_ID,Cliente_Nombre,Cliente_Email,Producto,Categoria,Sucursal,Ciudad_Sucursal,Fecha_Venta,Cantidad,Precio_Unitario
+1,JUAN PEREZ,jperez@mail.com,Laptop Gamer X,Computacion,Sucursal Centro,Bogota,2024-01-01,1,3500
+2,Maria Gomez,maria.g@x.com,Mouse Wireless,Perifericos,Sucursal Norte,Bogota,2024-01-02,2,50
+3,Juan Perez,jperez@mail.com,Mouse Wireless,Perifericos,Sucursal Centro,Bogota,2024-01-03,1,50
+4,CARLOS RUIZ,cruiz@net.co,Teclado Mecanico,Perifericos,Sucursal Sur,Cali,2024-01-04,1,120
+5,Maria Gomez,maria.g@x.com,Laptop Gamer X,Computacion,Sucursal Norte,Bogota,2024-01-05,1,3500
+6,LUISA FERNANDA,luisa@f.com,Monitor 24,Pantallas,Sucursal Occidente,Medellin,2024-01-06,2,800
+7,juan perez,jperez@mail.com,Monitor 24,Pantallas,Sucursal Centro,Bogota,2024-01-07,1,800
+8,Carlos Ruiz,cruiz@net.co,Headset Pro,Audio,Sucursal Sur,Cali,2024-01-08,1,150
+9,ANA MARIA,ana.m@test.com,Webcam HD,Perifericos,Sucursal Centro,Bogota,2024-01-09,1,70
+10,Luisa Fernanda,luisa@f.com,Laptop Gamer X,Computacion,Sucursal Occidente,Medellin,2024-01-10,1,3500
+11,Pedro Pascal,pedro@actor.com,Teclado Mecanico,Perifericos,Sucursal Norte,Bogota,2024-01-11,3,120
+12,Maria Gomez,maria.g@x.com,Webcam HD,Perifericos,Sucursal Norte,Bogota,2024-01-12,1,70
+13,JUAN PEREZ,jperez@mail.com,Headset Pro,Audio,Sucursal Centro,Bogota,2024-01-13,1,150
+14,Ana Maria,ana.m@test.com,Mouse Wireless,Perifericos,Sucursal Centro,Bogota,2024-01-14,2,50
+15,CARLOS RUIZ,cruiz@net.co,Monitor 24,Pantallas,Sucursal Sur,Cali,2024-01-15,1,800
