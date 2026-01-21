@@ -1,7 +1,7 @@
 /*
 RETO PARTE A: DISEÑO DEL ESQUEMA RELACIONAL
 Estudiante: Maria Fernanda Torres
-Fecha: 2026-01-20
+Fecha: 2026-01-21
 
 INSTRUCCIONES:
 1.  Crea la base de datos si no existe.
@@ -48,7 +48,7 @@ CREATE TABLE Ventas (
     TransaccionID INT NOT NULL,
     FechaVenta DATE NOT NULL,
     Cantidad INT NOT NULL,
-    PrecioUnitario FLOAT NOT NULL,
+    PrecioUnitario DECIMAL(10,2) NOT NULL,
 
     -- LLAVES FORÁNEAS (La magia de la relación)
     ClienteID INT,

@@ -1,8 +1,6 @@
 /*
 RETO PARTE B: LABORATORIO DE PERFORMANCE
 Objetivo: Comparar CROSS JOIN vs INNER JOIN
-Estudiante: Maria Fernanda Torres
-Fecha: 2026-01-20
 */
 
 -- PASO 0: PREPARACIÓN
@@ -18,8 +16,10 @@ PRINT '>>> INICIO DEL BENCHMARK <<<';
 PRINT '--- EJECUTANDO CROSS JOIN (Producto Cartesiano) ---';
 
 -- Esta consulta combina TODOS los clientes con TODOS los productos.
--- Si tienes 100 clientes y 50 productos → 5.000 filas.
--- No representa ventas reales.
+-- Si tienes 5 clientes y 5 productos, traerá 25 filas.
+-- Si tienes 1 millón de clientes... bueno, ya sabes.
+USE RetoSQL;
+GO
 
 SELECT
     c.Nombre AS Cliente,
@@ -28,15 +28,18 @@ FROM Clientes c
 CROSS JOIN Productos p;
 
 -- PREGUNTA DE ANÁLISIS:
--- ¿Cuántos "Logical Reads" aparecen?
--- ¿Por qué el número de filas es artificialmente alto?
+-- ¿Cuántos "Logical Reads" muestra la pestaña Messages?
+-- SQL Server tuvo 30 logical reads para generar el resultado de la consulta CROSS JOIN.
+-- ¿Por qué el número de filas es Mayor que la tabla de ventas real?
+-- La tabla ventas solo contiene las ventas reales, mientras que el CROSS JOIN genera todas 
+-- las combinaciones posibles entre clientes y productos, resultando en un número mucho mayor de filas.
 
 -- =======================================================
 -- ESCENARIO 2: LA CONSULTA EFICIENTE (INNER JOIN)
 -- =======================================================
 PRINT '--- EJECUTANDO INNER JOIN (Ventas Reales) ---';
 
--- Esta consulta usa las llaves foráneas reales.
+-- Esta consulta usa la FK para unir solo lo que existe.
 
 SELECT
     c.Nombre AS Cliente,
@@ -51,8 +54,7 @@ INNER JOIN Productos p
     ON v.ProductoID = p.ProductoID;
 
 -- COMPARACIÓN:
--- Los Logical Reads y el tiempo de CPU
--- deberían ser muchísimo menores.
-
+-- Mira los Logical Reads aquí. Deberían ser drásticamente menores.
+-- Si son mucho menores con un total de 9 logical reads para la consulta INNER JOIN.
 SET STATISTICS IO OFF;
 SET STATISTICS TIME OFF;
