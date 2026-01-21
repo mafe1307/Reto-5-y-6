@@ -1,120 +1,103 @@
-import pyodbc
 import pandas as pd
-import os
+import sqlalchemy as sa
+from sqlalchemy import create_engine, text
+import urllib
 import time
+import os
 
 # ===============================
-# CONFIGURACIÓN
+# CONEXIÓN
 # ===============================
-DB_HOST = os.getenv("DB_HOST", "localhost,1434")
-DB_USER = os.getenv("DB_USER", "sa")
-DB_PASS = os.getenv("DB_PASS", "ContraseñaFuerte123!")
-DB_NAME = "RetoSQL"
+params = urllib.parse.quote_plus(
+    "DRIVER=ODBC Driver 18 for SQL Server;"
+    "SERVER=localhost,1434;"
+    "DATABASE=RetoSQL;"
+    "UID=sa;"
+    "PWD=ContraseñaFuerte123!;"
+    "TrustServerCertificate=yes;"
+)
 
-# Ruta del CSV (relativa al directorio raíz del proyecto)
-CSV_PATH = os.path.join(os.path.dirname(__file__), "../../01_data/raw/raw_sales_dump.csv")
-
-# ===============================
-# CONEXIÓN SQL SERVER
-# ===============================
-def get_connection():
-    conn_str = (
-        "DRIVER={ODBC Driver 17 for SQL Server};"
-        f"SERVER={DB_HOST};"
-        f"DATABASE={DB_NAME};"
-        f"UID={DB_USER};"
-        f"PWD={DB_PASS};"
-        "TrustServerCertificate=yes;"
-    )
-    return pyodbc.connect(conn_str, autocommit=True)
+engine = create_engine(
+    f"mssql+pyodbc:///?odbc_connect={params}",
+    fast_executemany=True
+)
 
 # ===============================
-# PROCESO ELT
+# ELT
 # ===============================
 def run_elt():
-    print("🚀 INICIANDO ELT")
+    print("🚀 INICIANDO ELT CON SQLALCHEMY")
 
-    # ---------------------------
-    # EXTRACT
-    # ---------------------------
-    print("📂 Leyendo CSV...")
-    df = pd.read_csv(CSV_PATH)
+    # -------- EXTRACT --------
+    csv_path = os.path.join(os.path.dirname(__file__), "../../01_data/raw/raw_sales_dump.csv")
+    df = pd.read_csv(csv_path)
+    print(f"Filas leídas: {len(df)}")
 
-    print(f"✅ Filas leídas: {len(df)}")
-
-    # ---------------------------
-    # TRANSFORM
-    # ---------------------------
-    print("🧹 Normalizando datos...")
-
+    # -------- TRANSFORM (ligero) --------
     df["Cliente_Email"] = df["Cliente_Email"].str.lower().str.strip()
     df["Cliente_Nombre"] = df["Cliente_Nombre"].str.title().str.strip()
 
-    df["Producto"] = df["Producto"].str.strip()
-    df["Categoria"] = df["Categoria"].str.strip()
+    # -------- LOAD (STAGING) --------
+    print("📥 Cargando tabla STG_VentasRaw...")
 
-    df["Sucursal"] = df["Sucursal"].str.strip()
-    df["Ciudad_Sucursal"] = df["Ciudad_Sucursal"].str.strip()
+    with engine.begin() as conn:
+        conn.execute(text("IF OBJECT_ID('STG_VentasRaw','U') IS NOT NULL DROP TABLE STG_VentasRaw"))
 
-    # ---------------------------
-    # LOAD
-    # ---------------------------
-    conn = get_connection()
-    cursor = conn.cursor()
+    df.to_sql(
+        "STG_VentasRaw",
+        con=engine,
+        if_exists="replace",
+        index=False,
+        chunksize=10000
+    )
 
-    # ===========================
-    # CLIENTES
-    # ===========================
-    print("👥 Cargando Clientes...")
-    clientes = df[["Cliente_Nombre", "Cliente_Email"]].drop_duplicates()
+    print("✅ Staging cargado")
 
-    for _, row in clientes.iterrows():
-        cursor.execute("""
-            IF NOT EXISTS (
-                SELECT 1 FROM Clientes WHERE Email = ?
-            )
+    # -------- TRANSFORM EN SQL --------
+    with engine.begin() as conn:
+
+        print("👥 Poblando Clientes...")
+        conn.execute(text("""
             INSERT INTO Clientes (Nombre, Email)
-            VALUES (?, ?)
-        """, row.Cliente_Email, row.Cliente_Nombre, row.Cliente_Email)
-
-    # ===========================
-    # PRODUCTOS
-    # ===========================
-    print("📦 Cargando Productos...")
-    productos = df[["Producto", "Categoria"]].drop_duplicates()
-
-    for _, row in productos.iterrows():
-        cursor.execute("""
-            IF NOT EXISTS (
-                SELECT 1 FROM Productos 
-                WHERE NombreProducto = ? AND Categoria = ?
+            SELECT DISTINCT
+                Cliente_Nombre,
+                Cliente_Email
+            FROM STG_VentasRaw
+            WHERE Cliente_Email NOT IN (
+                SELECT Email FROM Clientes
             )
+        """))
+
+        print("📦 Poblando Productos...")
+        conn.execute(text("""
             INSERT INTO Productos (NombreProducto, Categoria)
-            VALUES (?, ?)
-        """, row.Producto, row.Categoria, row.Producto, row.Categoria)
-
-    # ===========================
-    # SUCURSALES
-    # ===========================
-    print("🏬 Cargando Sucursales...")
-    sucursales = df[["Sucursal", "Ciudad_Sucursal"]].drop_duplicates()
-
-    for _, row in sucursales.iterrows():
-        cursor.execute("""
-            IF NOT EXISTS (
-                SELECT 1 FROM Sucursales 
-                WHERE NombreSucursal = ? AND Ciudad = ?
+            SELECT DISTINCT
+                Producto,
+                Categoria
+            FROM STG_VentasRaw
+            WHERE NOT EXISTS (
+                SELECT 1 FROM Productos p
+                WHERE p.NombreProducto = STG_VentasRaw.Producto
+                AND p.Categoria = STG_VentasRaw.Categoria
             )
-            INSERT INTO Sucursales (NombreSucursal, Ciudad)
-            VALUES (?, ?)
-        """, row.Sucursal, row.Ciudad_Sucursal, row.Sucursal, row.Ciudad_Sucursal)
+        """))
 
-    # ===========================
-    # VENTAS
-    # ===========================
-    print("🧾 Cargando Ventas...")
-    for _, row in df.iterrows():
-        cursor.execute("""
+        print("🏬 Poblando Sucursales...")
+        conn.execute(text("""
+            INSERT INTO Sucursales (NombreSucursal, Ciudad)
+            SELECT DISTINCT
+                Sucursal,
+                Ciudad_Sucursal
+            FROM STG_VentasRaw
+            WHERE NOT EXISTS (
+                SELECT 1 FROM Sucursales s
+                WHERE s.NombreSucursal = STG_VentasRaw.Sucursal
+                AND s.Ciudad = STG_VentasRaw.Ciudad_Sucursal
+            )
+        """))
+
+        print("🧾 Poblando Ventas...")
+        conn.execute(text("""
             INSERT INTO Ventas (
                 TransaccionID,
                 ClienteID,
@@ -125,37 +108,26 @@ def run_elt():
                 PrecioUnitario
             )
             SELECT
-                ?,
+                r.Transaccion_ID,
                 c.ClienteID,
                 p.ProductoID,
                 s.SucursalID,
-                ?,
-                ?,
-                ?
-            FROM Clientes c
-            JOIN Productos p 
-                ON p.NombreProducto = ? AND p.Categoria = ?
-            JOIN Sucursales s
-                ON s.NombreSucursal = ? AND s.Ciudad = ?
-            WHERE c.Email = ?
-        """,
-        row.Transaccion_ID,
-        row.Fecha_Venta,
-        row.Cantidad,
-        row.Precio_Unitario,
-        row.Producto,
-        row.Categoria,
-        row.Sucursal,
-        row.Ciudad_Sucursal,
-        row.Cliente_Email
-        )
+                r.Fecha_Venta,
+                r.Cantidad,
+                r.Precio_Unitario
+            FROM STG_VentasRaw r
+            JOIN Clientes c ON r.Cliente_Email = c.Email
+            JOIN Productos p ON r.Producto = p.NombreProducto
+                            AND r.Categoria = p.Categoria
+            JOIN Sucursales s ON r.Sucursal = s.NombreSucursal
+                              AND r.Ciudad_Sucursal = s.Ciudad
+        """))
 
-    conn.close()
-    print("✅ ELT FINALIZADO CORRECTAMENTE")
+    print("🎯 ELT COMPLETADO CON ÉXITO")
 
 # ===============================
 # MAIN
 # ===============================
 if __name__ == "__main__":
-    time.sleep(5)  # espera SQL Server
+    time.sleep(3)
     run_elt()

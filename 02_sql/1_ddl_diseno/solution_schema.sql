@@ -1,7 +1,7 @@
 /*
 RETO PARTE A: DISEÑO DEL ESQUEMA RELACIONAL
 Estudiante: Maria Fernanda Torres
-Fecha: 2026-01-18
+Fecha: 2026-01-20
 
 INSTRUCCIONES:
 1.  Crea la base de datos si no existe.
@@ -9,31 +9,58 @@ INSTRUCCIONES:
 3.  Define las tablas transaccionales al final.
 */
 
-
-IF DB_ID('RetoSQL') IS NULL
-BEGIN
-    CREATE DATABASE RetoSQL;
-END
+CREATE DATABASE RetoSQL;
 GO
-
 USE RetoSQL;
 GO
 
-IF OBJECT_ID('dbo.Clientes', 'U') IS NOT NULL
-    DROP TABLE dbo.Clientes;
-GO
+-- =======================================================
+-- 1. TABLAS MAESTRAS (Clientes, Productos, Sucursales)
+-- =======================================================
 
-CREATE TABLE dbo.Clientes (
+-- Tabla Clientes
+CREATE TABLE Clientes (
     ClienteID INT IDENTITY(1,1) PRIMARY KEY,
-    Nombre VARCHAR(100),
-    Email VARCHAR(100),
-    Direccion VARCHAR(100)
+    Nombre VARCHAR(150) NOT NULL,
+    Email VARCHAR(150) UNIQUE NOT NULL
 );
-GO
 
-SELECT COUNT(*) AS TotalClientes FROM dbo.Clientes;
+-- Tabla Productos
+CREATE TABLE Productos (
+    ProductoID INT IDENTITY(1,1) PRIMARY KEY,
+    NombreProducto VARCHAR(150) NOT NULL,
+    Categoria VARCHAR(100) NOT NULL
+);
 
-SELECT 
-    DB_NAME()        AS BaseActual,
-    SCHEMA_NAME()    AS EsquemaActual,
-    SYSTEM_USER      AS Usuario;
+-- Tabla Sucursales
+CREATE TABLE Sucursales (
+    SucursalID INT IDENTITY(1,1) PRIMARY KEY,
+    NombreSucursal VARCHAR(150) NOT NULL,
+    Ciudad VARCHAR(100) NOT NULL
+);
+
+-- =======================================================
+-- 2. TABLA TRANSACCIONAL (Ventas)
+-- =======================================================
+
+CREATE TABLE Ventas (
+    VentaID INT IDENTITY(1,1) PRIMARY KEY,
+    TransaccionID INT NOT NULL,
+    FechaVenta DATE NOT NULL,
+    Cantidad INT NOT NULL,
+    PrecioUnitario FLOAT NOT NULL,
+
+    -- LLAVES FORÁNEAS (La magia de la relación)
+    ClienteID INT,
+    ProductoID INT,
+    SucursalID INT,
+
+    CONSTRAINT FK_Ventas_Clientes 
+        FOREIGN KEY (ClienteID) REFERENCES Clientes(ClienteID),
+
+    CONSTRAINT FK_Ventas_Productos 
+        FOREIGN KEY (ProductoID) REFERENCES Productos(ProductoID),
+
+    CONSTRAINT FK_Ventas_Sucursales 
+        FOREIGN KEY (SucursalID) REFERENCES Sucursales(SucursalID)
+);

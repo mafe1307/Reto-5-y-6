@@ -11,7 +11,9 @@
       - sql_data:/var/opt/mssql
 
   jupyter:
-    build: ./jupyter
+    build:
+      context: .
+      dockerfile: ./Docker/Jupyter/Dockerfile
     container_name: jupyter_data_lab
     ports:
       - "8889:8888"

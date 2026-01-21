@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean
 
 # 2. Configurar directorio de trabajo
-WORKDIR /RETI 5 Y 6
+WORKDIR /RETO 5 Y 6
 
 # 3. Copiar requirements e instalarlos
 COPY requirements.txt .
